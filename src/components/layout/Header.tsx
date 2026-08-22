@@ -3,7 +3,11 @@ import { useThemeStore } from '@/stores/themeStore';
 import { useNavigate } from 'react-router-dom';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
-export function Header() {
+interface HeaderProps {
+  onMenuToggle?: () => void;
+}
+
+export function Header({ onMenuToggle }: HeaderProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const theme = useThemeStore((s) => s.theme);
@@ -16,14 +20,23 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 dark:border-gray-700 dark:bg-gray-900">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 dark:border-gray-700 dark:bg-gray-900">
       <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuToggle}
+          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+          aria-label="Toggle navigation menu"
+        >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
           S
         </div>
         <h1 className="text-lg font-semibold text-gray-900 dark:text-white">SprintDesk</h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <NotificationBell />
         <button
           onClick={toggleTheme}
@@ -45,9 +58,9 @@ export function Header() {
             <img
               src={user.image}
               alt={user.firstName}
-              className="h-8 w-8 rounded-full"
+              className="hidden h-8 w-8 rounded-full sm:block"
             />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="hidden text-sm font-medium text-gray-700 dark:text-gray-300 sm:block">
               {user.firstName}
             </span>
             <button

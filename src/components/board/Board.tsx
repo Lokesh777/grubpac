@@ -98,7 +98,6 @@ export function Board() {
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      setActiveTask(null);
 
       if (!over) return;
 

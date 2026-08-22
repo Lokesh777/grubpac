@@ -5,11 +5,56 @@ import {
   LineChart, Line,
 } from 'recharts';
 import { useBoardStore } from '@/stores/boardStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { fetchTasks } from '@/api/tasks';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Task } from '@/types';
 
-const COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#22c55e'];
+function useChartColors() {
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === 'dark';
+
+  return useMemo(() => ({
+    indigo: isDark ? '#818cf8' : '#6366f1',
+    blue: isDark ? '#60a5fa' : '#3b82f6',
+    yellow: isDark ? '#fbbf24' : '#f59e0b',
+    green: isDark ? '#4ade80' : '#22c55e',
+    gray: isDark ? '#6b7280' : '#9ca3af',
+    red: isDark ? '#f87171' : '#ef4444',
+    grid: isDark ? '#374151' : '#e5e7eb',
+    tooltipBg: isDark ? '#1f2937' : '#ffffff',
+    tooltipText: isDark ? '#f3f4f6' : '#374151',
+    tooltipBorder: isDark ? '#4b5563' : '#e5e7eb',
+    legendText: isDark ? '#9ca3af' : '#6b7280',
+    axisText: isDark ? '#9ca3af' : '#6b7280',
+  }), [isDark]);
+}
+
+function CustomTooltip({ active, payload, label, colors }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+  colors: ReturnType<typeof useChartColors>;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="rounded-lg border px-3 py-2 shadow-lg"
+      style={{
+        backgroundColor: colors.tooltipBg,
+        borderColor: colors.tooltipBorder,
+        color: colors.tooltipText,
+      }}
+    >
+      {label && <p className="mb-1 text-sm font-medium">{label}</p>}
+      {payload.map((entry, i) => (
+        <p key={i} className="text-xs" style={{ color: entry.color }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 function computeAnalytics(tasks: Task[]) {
   const statusData = [
@@ -52,6 +97,7 @@ export function AnalyticsPage() {
   const board = useBoardStore((s) => s.board);
   const initialized = useBoardStore((s) => s.initialized);
   const initBoard = useBoardStore((s) => s.initBoard);
+  const colors = useChartColors();
 
   useEffect(() => {
     if (!initialized) {
@@ -65,6 +111,8 @@ export function AnalyticsPage() {
   );
 
   const analytics = useMemo(() => computeAnalytics(tasks), [tasks]);
+
+  const pieColors = [colors.indigo, colors.blue, colors.yellow, colors.green];
 
   if (!initialized) {
     return (
@@ -91,13 +139,13 @@ export function AnalyticsPage() {
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Sprint Velocity</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={analytics.sprints}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="completed" fill="#6366f1" name="Completed" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="total" fill="#e5e7eb" name="Total" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} />
+              <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
+              <Tooltip content={<CustomTooltip colors={colors} />} />
+              <Legend wrapperStyle={{ color: colors.legendText }} />
+              <Bar dataKey="completed" fill={colors.indigo} name="Completed" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total" fill={colors.gray} name="Total" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -117,10 +165,10 @@ export function AnalyticsPage() {
                 label={({ name, value }) => `${name}: ${value}`}
               >
                 {analytics.statusData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip content={<CustomTooltip colors={colors} />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -129,15 +177,15 @@ export function AnalyticsPage() {
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Priority Breakdown by Column</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={analytics.priorityData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="column" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="low" stackId="a" fill="#9ca3af" name="Low" />
-              <Bar dataKey="medium" stackId="a" fill="#3b82f6" name="Medium" />
-              <Bar dataKey="high" stackId="a" fill="#f59e0b" name="High" />
-              <Bar dataKey="critical" stackId="a" fill="#ef4444" name="Critical" />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+              <XAxis dataKey="column" tick={{ fontSize: 12, fill: colors.axisText }} />
+              <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
+              <Tooltip content={<CustomTooltip colors={colors} />} />
+              <Legend wrapperStyle={{ color: colors.legendText }} />
+              <Bar dataKey="low" stackId="a" fill={colors.gray} name="Low" />
+              <Bar dataKey="medium" stackId="a" fill={colors.blue} name="Medium" />
+              <Bar dataKey="high" stackId="a" fill={colors.yellow} name="High" />
+              <Bar dataKey="critical" stackId="a" fill={colors.red} name="Critical" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -146,11 +194,11 @@ export function AnalyticsPage() {
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Completion Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={analytics.completionTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="tasks" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} name="Tasks Completed" />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} />
+              <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
+              <Tooltip content={<CustomTooltip colors={colors} />} />
+              <Line type="monotone" dataKey="tasks" stroke={colors.indigo} strokeWidth={2} dot={{ r: 4, fill: colors.indigo }} name="Tasks Completed" />
             </LineChart>
           </ResponsiveContainer>
         </div>

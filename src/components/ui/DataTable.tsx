@@ -94,14 +94,14 @@ export function DataTable<T extends Record<string, unknown>>({
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="rounded px-3 py-1 text-sm border border-gray-300 disabled:opacity-50 dark:border-gray-600"
+              className="rounded px-3 py-1 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Previous
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="rounded px-3 py-1 text-sm border border-gray-300 disabled:opacity-50 dark:border-gray-600"
+              className="rounded px-3 py-1 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Next
             </button>
