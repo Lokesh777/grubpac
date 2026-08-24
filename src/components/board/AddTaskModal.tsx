@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useBoardStore } from '@/stores/boardStore';
 import { useToast } from '@/hooks/useToast';
+import { getMockUsers } from '@/api/tasks';
 import type { Priority, ColumnId } from '@/types';
 
 interface AddTaskModalProps {
@@ -26,51 +27,49 @@ const columnOptions = [
   { value: 'done', label: 'Done' },
 ];
 
-const assigneeOptions = [
-  { value: 'Emily Johnson', label: 'Emily Johnson' },
-  { value: 'Michael Williams', label: 'Michael Williams' },
-  { value: 'Sophia Brown', label: 'Sophia Brown' },
-  { value: 'James Davis', label: 'James Davis' },
-];
+const mockUsers = getMockUsers();
+
+const assigneeOptions = mockUsers.map((u) => ({
+  value: u.name,
+  label: u.name,
+}));
 
 export function AddTaskModal({ isOpen, onClose }: AddTaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [columnId, setColumnId] = useState<ColumnId>('backlog');
-  const [assignee, setAssignee] = useState('Emily Johnson');
+  const [assigneeName, setAssigneeName] = useState(mockUsers[0]?.name || '');
   const [dueDate, setDueDate] = useState('');
   const addTask = useBoardStore((s) => s.addTask);
   const toast = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const avatarMap: Record<string, string> = {
-      'Emily Johnson': 'https://i.pravatar.cc/150?u=emilys',
-      'Michael Williams': 'https://i.pravatar.cc/150?u=michaelw',
-      'Sophia Brown': 'https://i.pravatar.cc/150?u=sophiab',
-      'James Davis': 'https://i.pravatar.cc/150?u=jamesd',
-    };
+    const matchedUser = mockUsers.find((u) => u.name === assigneeName);
+    const avatar = matchedUser?.avatar || '';
     addTask({
       id: Date.now(),
       title,
       description,
       priority,
-      assignee,
-      assigneeAvatar: avatarMap[assignee] || '',
+      assignee: assigneeName,
+      assigneeAvatar: avatar,
       dueDate: dueDate || new Date().toISOString().split('T')[0],
       columnId,
       order: 0,
       comments: [],
       createdAt: new Date().toISOString(),
-      sprintId: 4,
+      completedAt: null,
+      updatedAt: new Date().toISOString(),
+      sprintId: 3,
     });
     toast.success('Task created');
     setTitle('');
     setDescription('');
     setPriority('medium');
     setColumnId('backlog');
-    setAssignee('Emily Johnson');
+    setAssigneeName(mockUsers[0]?.name || '');
     setDueDate('');
     onClose();
   };
@@ -113,8 +112,8 @@ export function AddTaskModal({ isOpen, onClose }: AddTaskModalProps) {
           <Select
             label="Assignee"
             options={assigneeOptions}
-            value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
+            value={assigneeName}
+            onChange={(e) => setAssigneeName(e.target.value)}
           />
           <Input
             label="Due Date"

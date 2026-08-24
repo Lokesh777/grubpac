@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '@/types';
@@ -16,7 +17,7 @@ interface TaskCardProps {
   onClick: (task: Task) => void;
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export const TaskCard = memo(function TaskCard({ task, onClick }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -61,11 +62,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
         <span className={cn(
           'text-xs',
-          isOverdue(task.dueDate) ? 'text-red-500' : 'text-gray-400'
+          isOverdue(task.dueDate) && task.columnId !== 'done' ? 'text-red-500' : 'text-gray-400'
         )}>
           {formatDate(task.dueDate)}
         </span>
       </div>
     </div>
   );
-}
+});

@@ -1,56 +1,93 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface StoredSession {
+  user: User;
+  savedAt: number;
+}
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (user: User) => void;
+  login: (user: User, rememberMe?: boolean) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   refreshAccessToken: (newAccessToken: string) => void;
 }
 
-const getStoredRefreshToken = (): string | null => {
+function getStoredSession(): StoredSession | null {
   try {
-    return localStorage.getItem('refreshToken');
+    const raw = localStorage.getItem('session');
+    if (!raw) return null;
+    const session: StoredSession = JSON.parse(raw);
+    if (Date.now() - session.savedAt > THIRTY_DAYS_MS) {
+      localStorage.removeItem('session');
+      return null;
+    }
+    return session;
   } catch {
+    localStorage.removeItem('session');
     return null;
   }
-};
+}
 
-const getStoredUser = (): User | null => {
-  try {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-};
+export const useAuthStore = create<AuthState>((set) => {
+  const stored = getStoredSession();
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: getStoredUser(),
-  accessToken: null,
-  refreshToken: getStoredRefreshToken(),
-  isAuthenticated: !!getStoredRefreshToken(),
-  isLoading: true,
-  login: (user) => {
-    localStorage.setItem('refreshToken', user.refreshToken);
-    localStorage.setItem('user', JSON.stringify(user));
-    set({ user, accessToken: user.token, refreshToken: user.refreshToken, isAuthenticated: true, isLoading: false });
-  },
-  logout: () => {
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
-  },
-  setLoading: (loading) => set({ isLoading: loading }),
-  setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem('refreshToken', refreshToken);
-    set({ accessToken, refreshToken });
-  },
-  refreshAccessToken: (newAccessToken) => set({ accessToken: newAccessToken }),
-}));
+  return {
+    user: stored?.user ?? null,
+    accessToken: null,
+    refreshToken: stored?.user?.refreshToken ?? null,
+    isAuthenticated: !!stored?.user?.refreshToken,
+    isLoading: true,
+
+    login: (user, rememberMe = false) => {
+      if (rememberMe) {
+        const session: StoredSession = { user, savedAt: Date.now() };
+        localStorage.setItem('session', JSON.stringify(session));
+      } else {
+        localStorage.removeItem('session');
+      }
+      set({
+        user,
+        accessToken: user.token,
+        refreshToken: user.refreshToken,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    },
+
+    logout: () => {
+      localStorage.removeItem('session');
+      set({
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    },
+
+    setLoading: (loading) => set({ isLoading: loading }),
+
+    setTokens: (accessToken, refreshToken) => {
+      const stored = getStoredSession();
+      if (stored) {
+        const updated: StoredSession = {
+          user: { ...stored.user, refreshToken },
+          savedAt: stored.savedAt,
+        };
+        localStorage.setItem('session', JSON.stringify(updated));
+      }
+      set({ accessToken, refreshToken });
+    },
+
+    refreshAccessToken: (newAccessToken) => set({ accessToken: newAccessToken }),
+  };
+});

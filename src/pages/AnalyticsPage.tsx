@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -6,7 +6,8 @@ import {
 } from 'recharts';
 import { useBoardStore } from '@/stores/boardStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { fetchTasks } from '@/api/tasks';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
+import { getMockSprints } from '@/api/tasks';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Task } from '@/types';
 
@@ -75,35 +76,50 @@ function computeAnalytics(tasks: Task[]) {
     };
   });
 
-  const sprints = [
-    { name: 'Sprint 1', completed: 8, total: 12 },
-    { name: 'Sprint 2', completed: 10, total: 15 },
-    { name: 'Sprint 3', completed: 12, total: 18 },
-    { name: 'Sprint 4', completed: 3, total: 20 },
-  ];
+  const sprints = getMockSprints();
+  const sprintVelocity = sprints.map((sprint) => {
+    const sprintTasks = tasks.filter((t) => t.sprintId === sprint.id);
+    const completed = sprintTasks.filter((t) => t.status === 'done' || t.columnId === 'done');
+    return {
+      name: sprint.name,
+      completed: completed.length,
+      total: sprintTasks.length,
+    };
+  });
 
-  const completionTrend = [
-    { name: 'Week 1', tasks: 5 },
-    { name: 'Week 2', tasks: 8 },
-    { name: 'Week 3', tasks: 12 },
-    { name: 'Week 4', tasks: 15 },
-    { name: 'Week 5', tasks: 18 },
-  ];
+  const completedTasks = tasks.filter((t) => t.completedAt);
+  const weeklyCompletion: Record<string, number> = {};
+  completedTasks.forEach((task) => {
+    const date = new Date(task.completedAt!);
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - date.getDay());
+    const weekKey = `Week ${Math.ceil((weekStart.getTime() - new Date('2026-07-20').getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
+    weeklyCompletion[weekKey] = (weeklyCompletion[weekKey] || 0) + 1;
+  });
 
-  return { statusData, priorityData, sprints, completionTrend };
+  const completionTrend = Object.entries(weeklyCompletion)
+    .map(([name, tasks]) => ({ name, tasks }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  if (completionTrend.length === 0) {
+    const totalDone = tasks.filter((t) => t.columnId === 'done').length;
+    const perWeek = Math.ceil(totalDone / 4);
+    completionTrend.push(
+      { name: 'Week 1', tasks: perWeek },
+      { name: 'Week 2', tasks: perWeek * 2 },
+      { name: 'Week 3', tasks: perWeek * 3 },
+      { name: 'Week 4', tasks: totalDone },
+    );
+  }
+
+  return { statusData, priorityData, sprintVelocity, completionTrend };
 }
 
 export function AnalyticsPage() {
   const board = useBoardStore((s) => s.board);
-  const initialized = useBoardStore((s) => s.initialized);
-  const initBoard = useBoardStore((s) => s.initBoard);
   const colors = useChartColors();
 
-  useEffect(() => {
-    if (!initialized) {
-      fetchTasks().then((tasks) => initBoard(tasks));
-    }
-  }, [initialized, initBoard]);
+  const { isLoading } = useTasksQuery();
 
   const tasks = useMemo(
     () => Object.values(board.tasks),
@@ -114,7 +130,7 @@ export function AnalyticsPage() {
 
   const pieColors = [colors.indigo, colors.blue, colors.yellow, colors.green];
 
-  if (!initialized) {
+  if (isLoading) {
     return (
       <div>
         <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Analytics</h2>
@@ -138,14 +154,14 @@ export function AnalyticsPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Sprint Velocity</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics.sprints}>
+            <BarChart data={analytics.sprintVelocity}>
               <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} />
               <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
               <Tooltip content={<CustomTooltip colors={colors} />} />
               <Legend wrapperStyle={{ color: colors.legendText }} />
-              <Bar dataKey="completed" fill={colors.indigo} name="Completed" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="total" fill={colors.gray} name="Total" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="completed" fill={colors.indigo} name="Completed" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={800} />
+              <Bar dataKey="total" fill={colors.gray} name="Total" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -163,6 +179,8 @@ export function AnalyticsPage() {
                 paddingAngle={4}
                 dataKey="value"
                 label={({ name, value }) => `${name}: ${value}`}
+                isAnimationActive
+                animationDuration={800}
               >
                 {analytics.statusData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
@@ -182,10 +200,10 @@ export function AnalyticsPage() {
               <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
               <Tooltip content={<CustomTooltip colors={colors} />} />
               <Legend wrapperStyle={{ color: colors.legendText }} />
-              <Bar dataKey="low" stackId="a" fill={colors.gray} name="Low" />
-              <Bar dataKey="medium" stackId="a" fill={colors.blue} name="Medium" />
-              <Bar dataKey="high" stackId="a" fill={colors.yellow} name="High" />
-              <Bar dataKey="critical" stackId="a" fill={colors.red} name="Critical" />
+              <Bar dataKey="low" stackId="a" fill={colors.gray} name="Low" isAnimationActive animationDuration={800} />
+              <Bar dataKey="medium" stackId="a" fill={colors.blue} name="Medium" isAnimationActive animationDuration={800} />
+              <Bar dataKey="high" stackId="a" fill={colors.yellow} name="High" isAnimationActive animationDuration={800} />
+              <Bar dataKey="critical" stackId="a" fill={colors.red} name="Critical" isAnimationActive animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -198,7 +216,7 @@ export function AnalyticsPage() {
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} />
               <YAxis tick={{ fontSize: 12, fill: colors.axisText }} />
               <Tooltip content={<CustomTooltip colors={colors} />} />
-              <Line type="monotone" dataKey="tasks" stroke={colors.indigo} strokeWidth={2} dot={{ r: 4, fill: colors.indigo }} name="Tasks Completed" />
+              <Line type="monotone" dataKey="tasks" stroke={colors.indigo} strokeWidth={2} dot={{ r: 4, fill: colors.indigo }} name="Tasks Completed" isAnimationActive animationDuration={800} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useBoardStore } from '@/stores/boardStore';
-import { fetchTasks } from '@/api/tasks';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { TaskCardSkeleton } from '@/components/ui/Skeleton';
 
 const COLUMN_NAMES: Record<string, string> = {
@@ -13,14 +12,7 @@ const COLUMN_NAMES: Record<string, string> = {
 
 export function DashboardPage() {
   const board = useBoardStore((s) => s.board);
-  const initialized = useBoardStore((s) => s.initialized);
-  const initBoard = useBoardStore((s) => s.initBoard);
-
-  useEffect(() => {
-    if (!initialized) {
-      fetchTasks().then((tasks) => initBoard(tasks));
-    }
-  }, [initialized, initBoard]);
+  const { isLoading } = useTasksQuery();
 
   const totalTasks = Object.keys(board.tasks).length;
   const doneTasks = board.columns['done'].taskIds.length;
@@ -69,7 +61,7 @@ export function DashboardPage() {
               </span>
             </div>
             <div className="space-y-2">
-              {!initialized ? (
+              {isLoading ? (
                 <>
                   <TaskCardSkeleton />
                   <TaskCardSkeleton />
@@ -91,7 +83,7 @@ export function DashboardPage() {
                   );
                 })
               )}
-              {!initialized ? null : col.taskIds.length > 3 && (
+              {!isLoading && col.taskIds.length > 3 && (
                 <Link to="/board" className="block text-center text-xs text-indigo-600 hover:text-indigo-500 py-1">
                   +{col.taskIds.length - 3} more
                 </Link>

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { TaskCard } from './TaskCard';
@@ -17,7 +18,7 @@ const columnColors: Record<ColumnId, string> = {
   'done': 'border-t-green-500',
 };
 
-export function Column({ id, title, tasks, onTaskClick }: ColumnProps) {
+export const Column = memo(function Column({ id, title, tasks, onTaskClick }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -40,4 +41,4 @@ export function Column({ id, title, tasks, onTaskClick }: ColumnProps) {
       </div>
     </div>
   );
-}
+});

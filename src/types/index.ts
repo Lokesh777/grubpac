@@ -33,6 +33,8 @@ export interface Task {
   order: number;
   comments: Comment[];
   createdAt: string;
+  completedAt: string | null;
+  updatedAt: string;
   sprintId: number;
 }
 
@@ -54,8 +56,6 @@ export interface Sprint {
   name: string;
   startDate: string;
   endDate: string;
-  completedTasks: number;
-  totalTasks: number;
 }
 
 export interface AuthTokens {

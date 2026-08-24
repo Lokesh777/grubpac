@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -14,7 +14,8 @@ import { TaskDrawer } from './TaskDrawer';
 import { AddTaskModal } from './AddTaskModal';
 import { Button } from '@/components/ui/Button';
 import { useBoardStore } from '@/stores/boardStore';
-import { fetchTasks } from '@/api/tasks';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Task, ColumnId } from '@/types';
 
 const COLUMNS: { id: ColumnId; title: string }[] = [
@@ -29,16 +30,10 @@ export function Board() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const board = useBoardStore((s) => s.board);
-  const initialized = useBoardStore((s) => s.initialized);
-  const initBoard = useBoardStore((s) => s.initBoard);
   const moveTask = useBoardStore((s) => s.moveTask);
   const reorderTask = useBoardStore((s) => s.reorderTask);
 
-  useEffect(() => {
-    if (!initialized) {
-      fetchTasks().then((tasks) => initBoard(tasks));
-    }
-  }, [initialized, initBoard]);
+  const { isLoading } = useTasksQuery();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -125,6 +120,25 @@ export function Board() {
     setSelectedTask(task);
     setDrawerOpen(true);
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sprint Board</h2>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {['Backlog', 'In Progress', 'Review', 'Done'].map((title) => (
+            <div key={title} className="min-w-[280px] flex-1 rounded-lg bg-gray-100 dark:bg-gray-800/50 p-4">
+              <Skeleton className="mb-4 h-5 w-24" />
+              <Skeleton className="mb-3 h-24 w-full" />
+              <Skeleton className="mb-3 h-24 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">

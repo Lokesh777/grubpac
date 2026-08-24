@@ -14,6 +14,8 @@ const mockTask: Task = {
   order: 0,
   comments: [],
   createdAt: '2026-08-20T10:00:00Z',
+  completedAt: null,
+  updatedAt: '2026-08-20T10:00:00Z',
   sprintId: 4,
 };
 
