@@ -6,6 +6,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ToastContainer } from '@/components/ui/Toast';
 import { useThemeStore } from '@/stores/themeStore';
 import { useAuthStore } from '@/stores/authStore';
+import { refreshUserToken } from '@/api/auth';
+import { setAccessToken, setRefreshToken } from '@/api/client';
+import { loadSession, clearSession } from '@/api/tokenStorage';
 
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -36,32 +39,44 @@ function ThemeEffect() {
 
 function SessionInit() {
   const setLoading = useAuthStore((s) => s.setLoading);
-  const refreshTokenValue = useAuthStore((s) => s.refreshToken);
 
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
-      if (refreshTokenValue) {
-        try {
-          const res = await fetch('https://dummyjson.com/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: refreshTokenValue, expiresInMins: 30 }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            useAuthStore.getState().refreshAccessToken(data.accessToken);
-            useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
-          } else {
-            useAuthStore.getState().logout();
-          }
-        } catch {
-          useAuthStore.getState().logout();
-        }
+      const stored = loadSession();
+      if (!stored?.refreshToken) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        setRefreshToken(stored.refreshToken);
+        const data = await refreshUserToken(stored.refreshToken);
+        if (cancelled) return;
+        setAccessToken(data.accessToken);
+        setRefreshToken(data.refreshToken);
+        useAuthStore.getState().restoreSession(
+          {
+            ...stored.user,
+            token: data.accessToken,
+            refreshToken: data.refreshToken,
+          },
+          stored.rememberMe,
+        );
+      } catch {
+        clearSession();
+        if (!cancelled) useAuthStore.getState().logout();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
+
     init();
-  }, [refreshTokenValue, setLoading]);
+    return () => {
+      cancelled = true;
+    };
+  }, [setLoading]);
 
   return null;
 }

@@ -375,10 +375,9 @@ function downloadChartPng(element: HTMLElement, filename: string) {
   });
 }
 
-function DownloadButton({ chartKey, filename, exportingChart }: {
+function DownloadButton({ chartKey, filename }: {
   chartKey: string;
   filename: string;
-  exportingChart: string | null;
 }) {
   const handleClick = useCallback(() => {
     const card = document.querySelector(`[data-chart-card="${chartKey}"]`) as HTMLElement | null;
@@ -388,20 +387,12 @@ function DownloadButton({ chartKey, filename, exportingChart }: {
   return (
     <button
       onClick={handleClick}
-      disabled={exportingChart === chartKey}
-      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
       aria-label={`Export ${chartKey} chart as PNG`}
     >
-      {exportingChart === chartKey ? (
-        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      ) : (
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-      )}
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
     </button>
   );
 }
@@ -411,7 +402,6 @@ export function AnalyticsPage() {
   const colors = useChartColors();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [exportingChart, setExportingChart] = useState<string | null>(null);
 
   const { isLoading } = useTasksQuery();
 
@@ -475,7 +465,7 @@ export function AnalyticsPage() {
         <div data-chart-card="sprint-velocity" className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sprint Velocity</h3>
-            <DownloadButton chartKey="sprint-velocity" filename="sprintdesk-sprint-velocity.png" exportingChart={exportingChart} />
+            <DownloadButton chartKey="sprint-velocity" filename="sprintdesk-sprint-velocity.png" />
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={analytics.sprintVelocity}>
@@ -493,7 +483,7 @@ export function AnalyticsPage() {
         <div data-chart-card="task-status" className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Task Status Distribution</h3>
-            <DownloadButton chartKey="task-status" filename="sprintdesk-task-status.png" exportingChart={exportingChart} />
+            <DownloadButton chartKey="task-status" filename="sprintdesk-task-status.png" />
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -521,7 +511,7 @@ export function AnalyticsPage() {
         <div data-chart-card="priority-breakdown" className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Priority Breakdown by Column</h3>
-            <DownloadButton chartKey="priority-breakdown" filename="sprintdesk-priority-breakdown.png" exportingChart={exportingChart} />
+            <DownloadButton chartKey="priority-breakdown" filename="sprintdesk-priority-breakdown.png" />
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={analytics.priorityData}>
@@ -547,7 +537,7 @@ export function AnalyticsPage() {
         <div data-chart-card="completion-trend" className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Completion Trend</h3>
-            <DownloadButton chartKey="completion-trend" filename="sprintdesk-completion-trend.png" exportingChart={exportingChart} />
+            <DownloadButton chartKey="completion-trend" filename="sprintdesk-completion-trend.png" />
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={analytics.completionTrend}>

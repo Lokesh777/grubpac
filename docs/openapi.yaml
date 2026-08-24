@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: SprintDesk API
+  version: 1.0.0
+  description: |
+    External APIs used by SprintDesk plus the mock-data contract.
+    Auth and refresh go to DummyJSON. Notification polling uses JSONPlaceholder.
+    Tasks/sprints/users/comments are served from local mock-data.json through src/api/tasks.ts.
+servers:
+  - url: https://dummyjson.com
+    description: DummyJSON auth
+  - url: https://jsonplaceholder.typicode.com
+    description: JSONPlaceholder notifications
+  - url: /
+    description: Local mock data adapter (not a live HTTP server)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: DummyJSON login. Access token is kept in memory only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: emilys
+                password:
+                  type: string
+                  example: emilyspass
+                expiresInMins:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Authenticated user and tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid credentials
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Silent token refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                expiresInMins:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: New access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Refresh token invalid
+
+  /posts:
+    get:
+      tags: [Notifications]
+      summary: Poll latest posts as simulated notifications
+      parameters:
+        - in: query
+          name: _limit
+          schema:
+            type: integer
+            example: 5
+      responses:
+        '200':
+          description: Post list treated as notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlaceholderPost'
+
+  /mock/tasks:
+    get:
+      tags: [Mock]
+      summary: First 30 tasks from mock-data.json (via src/api/tasks.ts)
+      responses:
+        '200':
+          description: Transformed Task[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/TokenPair'
+        - type: object
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+            email:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+            gender:
+              type: string
+            image:
+              type: string
+    PlaceholderPost:
+      type: object
+      properties:
+        userId:
+          type: integer
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        assignee:
+          type: string
+        assigneeAvatar:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        columnId:
+          type: string
+          enum: [backlog, in-progress, review, done]
+        order:
+          type: integer
+        comments:
+          type: array
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        sprintId:
+          type: integer

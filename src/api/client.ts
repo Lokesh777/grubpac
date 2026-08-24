@@ -1,7 +1,9 @@
+import { updateStoredRefreshToken, clearSession } from './tokenStorage';
+
 let accessToken: string | null = null;
 let refreshTokenValue: string | null = null;
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+let refreshSubscribers: Array<(token: string | null) => void> = [];
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -19,23 +21,22 @@ export function getRefreshToken(): string | null {
   return refreshTokenValue;
 }
 
-function onTokenRefreshed(newToken: string) {
+function onTokenRefreshed(newToken: string | null) {
   refreshSubscribers.forEach((cb) => cb(newToken));
   refreshSubscribers = [];
 }
 
-async function doRefreshToken(): Promise<string> {
+async function doRefreshToken(): Promise<{ accessToken: string; refreshToken?: string }> {
   const res = await fetch('https://dummyjson.com/auth/refresh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       refreshToken: refreshTokenValue,
-      expiresInMins: 30,
+      expiresInMins: 1,
     }),
   });
   if (!res.ok) throw new Error('Refresh failed');
-  const data = await res.json();
-  return data.accessToken;
+  return res.json();
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -51,12 +52,16 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   const res = await fetch(url, { ...options, headers });
 
   if (res.status === 401 && refreshTokenValue && !url.includes('/auth/')) {
-    const retryPromise = new Promise<Response>((resolve) => {
-      refreshSubscribers.push(() => {
+    const retryPromise = new Promise<Response>((resolve, reject) => {
+      refreshSubscribers.push((token) => {
+        if (!token) {
+          reject(new Error('Session expired'));
+          return;
+        }
         const retryHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(options.headers as Record<string, string>),
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         };
         resolve(fetch(url, { ...options, headers: retryHeaders }));
       });
@@ -65,14 +70,19 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     if (!isRefreshing) {
       isRefreshing = true;
       doRefreshToken()
-        .then((newToken) => {
-          accessToken = newToken;
-          onTokenRefreshed(newToken);
+        .then((data) => {
+          accessToken = data.accessToken;
+          if (data.refreshToken) {
+            refreshTokenValue = data.refreshToken;
+            updateStoredRefreshToken(data.refreshToken);
+          }
+          onTokenRefreshed(data.accessToken);
         })
         .catch(() => {
           refreshTokenValue = null;
           accessToken = null;
-          refreshSubscribers = [];
+          onTokenRefreshed(null);
+          clearSession();
           if (typeof window !== 'undefined') {
             window.location.href = '/login';
           }

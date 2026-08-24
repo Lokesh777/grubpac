@@ -15,7 +15,7 @@ interface DataTableProps<T> {
   keyExtractor: (item: T) => string | number;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   columns,
   data,
   pageSize = 10,
@@ -28,8 +28,8 @@ export function DataTable<T extends Record<string, unknown>>({
   const sorted = useMemo(() => {
     if (!sortKey) return data;
     return [...data].sort((a, b) => {
-      const aVal = a[sortKey];
-      const bVal = b[sortKey];
+      const aVal = (a as Record<string, unknown>)[sortKey];
+      const bVal = (b as Record<string, unknown>)[sortKey];
       if (aVal == null) return 1;
       if (bVal == null) return -1;
       const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
@@ -78,7 +78,7 @@ export function DataTable<T extends Record<string, unknown>>({
             <tr key={keyExtractor(item)} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-3 text-gray-900 dark:text-gray-100">
-                  {col.render ? col.render(item) : String(item[col.key] ?? '')}
+                  {col.render ? col.render(item) : String((item as Record<string, unknown>)[col.key] ?? '')}
                 </td>
               ))}
             </tr>

@@ -97,55 +97,7 @@ function transformTask(raw: MockTask): Task {
 
 export async function fetchTasks(): Promise<Task[]> {
   await new Promise((resolve) => setTimeout(resolve, 400));
-  return rawTasks.map(transformTask);
-}
-
-export async function createTask(
-  task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'updatedAt' | 'comments'>
-): Promise<Task> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const maxId = Math.max(...rawTasks.map((t) => t.id), 0);
-  return {
-    ...task,
-    id: maxId + 1,
-    createdAt: new Date().toISOString(),
-    completedAt: null,
-    updatedAt: new Date().toISOString(),
-    comments: [],
-  };
-}
-
-export async function updateTask(
-  taskId: number,
-  updates: Partial<Task>
-): Promise<Task> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const existing = rawTasks.find((t) => t.id === taskId);
-  if (!existing) throw new Error('Task not found');
-  const transformed = transformTask(existing);
-  return { ...transformed, ...updates, updatedAt: new Date().toISOString() };
-}
-
-export async function deleteTaskRequest(_taskId: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-}
-
-export function getInitialBoardState(): Record<ColumnId, number[]> {
-  const columns: Record<ColumnId, number[]> = {
-    'backlog': [],
-    'in-progress': [],
-    'review': [],
-    'done': [],
-  };
-
-  const allTasks = rawTasks.map(transformTask);
-  allTasks
-    .sort((a, b) => a.order - b.order)
-    .forEach((task) => {
-      columns[task.columnId].push(task.id);
-    });
-
-  return columns;
+  return rawTasks.slice(0, 30).map(transformTask);
 }
 
 export function getMockUsers(): { id: number; name: string; avatar: string }[] {

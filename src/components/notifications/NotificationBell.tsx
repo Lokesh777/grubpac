@@ -4,7 +4,7 @@ import { pollNotifications } from '@/api/notifications';
 import { useToast } from '@/hooks/useToast';
 import { getRelativeTime } from '@/utils/date';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +13,9 @@ export function NotificationBell() {
   const toast = useToast();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const lastSeenIds = useRef<Set<number>>(new Set());
+  const hasSeeded = useRef(false);
+  const isOpenRef = useRef(false);
+  isOpenRef.current = isOpen;
 
   const totalPages = Math.max(1, Math.ceil(notifications.length / PAGE_SIZE));
   const startIndex = (currentPage - 1) * PAGE_SIZE;
@@ -22,30 +24,37 @@ export function NotificationBell() {
   const doPoll = useCallback(async () => {
     try {
       const posts = await pollNotifications();
-      const newIds = posts.map((p) => p.id);
-      const trulyNew = newIds.filter((id) => !lastSeenIds.current.has(id));
-      if (trulyNew.length > 0 && lastSeenIds.current.size > 0) {
-        trulyNew.forEach((id) => {
-          const post = posts.find((p) => p.id === id);
-          if (post) {
-            addNotification({
-              id: post.id,
-              title: post.title,
-              body: post.body,
-              read: false,
-              createdAt: new Date().toISOString(),
-            });
-            toast.info(`New: ${post.title}`);
-          }
+      const existingIds = new Set(
+        useNotificationStore.getState().notifications.map((n) => n.id),
+      );
+      const isInitialSeed = !hasSeeded.current && existingIds.size === 0;
+
+      posts.forEach((post) => {
+        if (existingIds.has(post.id)) return;
+
+        addNotification({
+          id: post.id,
+          title: post.title,
+          body: post.body,
+          read: false,
+          createdAt: new Date().toISOString(),
         });
-      }
-      newIds.forEach((id) => lastSeenIds.current.add(id));
+
+        if (!isInitialSeed && !isOpenRef.current) {
+          toast.info(`New: ${post.title}`);
+        }
+      });
+
+      hasSeeded.current = true;
     } catch {
       // Silently ignore polling errors
     }
   }, [addNotification, toast]);
 
   useEffect(() => {
+    const persisted = useNotificationStore.getState().notifications;
+    if (persisted.length > 0) hasSeeded.current = true;
+
     doPoll();
     pollingRef.current = setInterval(doPoll, 30000);
 

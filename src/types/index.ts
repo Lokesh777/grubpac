@@ -51,18 +51,6 @@ export interface Notification {
   createdAt: string;
 }
 
-export interface Sprint {
-  id: number;
-  name: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface Toast {
   id: string;
   message: string;

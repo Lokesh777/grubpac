@@ -9,7 +9,7 @@ interface LoginResponse extends User {
 export async function loginUser(username: string, password: string): Promise<User> {
   const res = await apiFetch('https://dummyjson.com/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username, password, expiresInMins: 30 }),
+    body: JSON.stringify({ username, password, expiresInMins: 1 }),
   });
   if (!res.ok) {
     const error = await res.json();
@@ -32,7 +32,7 @@ export async function loginUser(username: string, password: string): Promise<Use
 export async function refreshUserToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
   const res = await apiFetch('https://dummyjson.com/auth/refresh', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken, expiresInMins: 30 }),
+    body: JSON.stringify({ refreshToken, expiresInMins: 1 }),
   });
   if (!res.ok) throw new Error('Token refresh failed');
   return res.json();

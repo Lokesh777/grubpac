@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { loginUser } from '@/api/auth';
-import { setAccessToken, setRefreshToken } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/hooks/useToast';
@@ -24,8 +23,6 @@ export function LoginForm() {
     setLoading(true);
     try {
       const user = await loginUser(username, password);
-      setAccessToken(user.token);
-      setRefreshToken(user.refreshToken);
       login(user, rememberMe);
       toast.success('Login successful');
       navigate('/board');

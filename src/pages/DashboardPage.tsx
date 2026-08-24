@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useBoardStore } from '@/stores/boardStore';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { TaskCardSkeleton } from '@/components/ui/Skeleton';
+import { DataTable } from '@/components/ui/DataTable';
+import type { Task } from '@/types';
 
 const COLUMN_NAMES: Record<string, string> = {
   'backlog': 'Backlog',
@@ -91,6 +93,35 @@ export function DashboardPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">All Tasks</h3>
+        </div>
+        {isLoading ? (
+          <div className="p-5">
+            <TaskCardSkeleton />
+          </div>
+        ) : (
+          <DataTable<Task>
+            columns={[
+              { key: 'title', header: 'Title', sortable: true },
+              {
+                key: 'columnId',
+                header: 'Status',
+                sortable: true,
+                render: (task) => COLUMN_NAMES[task.columnId] ?? task.columnId,
+              },
+              { key: 'priority', header: 'Priority', sortable: true },
+              { key: 'assignee', header: 'Assignee', sortable: true },
+              { key: 'dueDate', header: 'Due Date', sortable: true },
+            ]}
+            data={Object.values(board.tasks)}
+            pageSize={8}
+            keyExtractor={(task) => task.id}
+          />
+        )}
       </div>
     </div>
   );
