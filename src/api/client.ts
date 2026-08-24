@@ -32,7 +32,7 @@ async function doRefreshToken(): Promise<{ accessToken: string; refreshToken?: s
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       refreshToken: refreshTokenValue,
-      expiresInMins: 1,
+      expiresInMins: 30,
     }),
   });
   if (!res.ok) throw new Error('Refresh failed');
@@ -71,12 +71,13 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
       isRefreshing = true;
       doRefreshToken()
         .then((data) => {
-          accessToken = data.accessToken;
+          accessToken = data.accessToken ?? (data as { token?: string }).token ?? '';
+          if (!accessToken) throw new Error('Refresh failed');
           if (data.refreshToken) {
             refreshTokenValue = data.refreshToken;
             updateStoredRefreshToken(data.refreshToken);
           }
-          onTokenRefreshed(data.accessToken);
+          onTokenRefreshed(accessToken);
         })
         .catch(() => {
           refreshTokenValue = null;

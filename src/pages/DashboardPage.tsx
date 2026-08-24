@@ -78,7 +78,7 @@ export function DashboardPage() {
                     <div key={task.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-1">{task.title}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <img src={task.assigneeAvatar} alt={task.assignee} className="h-4 w-4 rounded-full" />
+                        <img src={task.assigneeAvatar} alt="" width={16} height={16} loading="lazy" decoding="async" className="h-4 w-4 rounded-full" />
                         <span className="text-[10px] text-gray-400">{task.assignee.split(' ')[0]}</span>
                       </div>
                     </div>

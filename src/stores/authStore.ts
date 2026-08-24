@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
 import { setAccessToken, setRefreshToken } from '@/api/client';
-import { clearSession, saveSession } from '@/api/tokenStorage';
+import { clearSession, loadSession, saveSession } from '@/api/tokenStorage';
 
 interface AuthState {
   user: User | null;
@@ -16,13 +16,42 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
 }
 
+function readStoredAuth(): Pick<
+  AuthState,
+  'user' | 'accessToken' | 'refreshToken' | 'isAuthenticated' | 'isLoading' | 'rememberMe'
+> {
+  const empty = {
+    user: null,
+    accessToken: null,
+    refreshToken: null,
+    isAuthenticated: false,
+    isLoading: false,
+    rememberMe: false,
+  };
+  if (typeof window === 'undefined') return empty;
+
+  const stored = loadSession();
+  if (!stored?.refreshToken) return empty;
+
+  setRefreshToken(stored.refreshToken);
+  const user = {
+    ...stored.user,
+    token: '',
+    refreshToken: stored.refreshToken,
+  } as User;
+
+  return {
+    user,
+    accessToken: null,
+    refreshToken: stored.refreshToken,
+    isAuthenticated: true,
+    isLoading: false,
+    rememberMe: stored.rememberMe,
+  };
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  accessToken: null,
-  refreshToken: null,
-  isAuthenticated: false,
-  isLoading: true,
-  rememberMe: false,
+  ...readStoredAuth(),
 
   login: (user, rememberMe = false) => {
     setAccessToken(user.token);

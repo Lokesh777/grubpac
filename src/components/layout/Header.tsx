@@ -57,7 +57,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <div className="flex items-center gap-3">
             <img
               src={user.image}
-              alt={user.firstName}
+              alt=""
+              width={32}
+              height={32}
+              decoding="async"
               className="hidden h-8 w-8 rounded-full sm:block"
             />
             <span className="hidden text-sm font-medium text-gray-700 dark:text-gray-300 sm:block">

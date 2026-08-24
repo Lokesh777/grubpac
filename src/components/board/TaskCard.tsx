@@ -55,7 +55,11 @@ export const TaskCard = memo(function TaskCard({ task, onClick }: TaskCardProps)
         <div className="flex items-center gap-2">
           <img
             src={task.assigneeAvatar}
-            alt={task.assignee}
+            alt=""
+            width={24}
+            height={24}
+            loading="lazy"
+            decoding="async"
             className="h-6 w-6 rounded-full"
           />
           <span className="text-xs text-gray-500 dark:text-gray-400">{task.assignee.split(' ')[0]}</span>

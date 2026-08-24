@@ -10,6 +10,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    target: 'es2022',
+    cssCodeSplit: true,
+    modulePreload: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/recharts')) return 'charts';
+          if (id.includes('node_modules/@dnd-kit')) return 'dnd';
+          if (id.includes('node_modules/@tanstack')) return 'query';
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

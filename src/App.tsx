@@ -5,14 +5,11 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ToastContainer } from '@/components/ui/Toast';
 import { useThemeStore } from '@/stores/themeStore';
-import { useAuthStore } from '@/stores/authStore';
-import { refreshUserToken } from '@/api/auth';
-import { setAccessToken, setRefreshToken } from '@/api/client';
-import { loadSession, clearSession } from '@/api/tokenStorage';
+import { refreshPersistedSession } from '@/api/session';
+import { LoginPage } from '@/pages/LoginPage';
+import { BoardPage } from '@/pages/BoardPage';
 
-const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const BoardPage = lazy(() => import('@/pages/BoardPage').then((m) => ({ default: m.BoardPage })));
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
 
 const queryClient = new QueryClient({
@@ -38,45 +35,9 @@ function ThemeEffect() {
 }
 
 function SessionInit() {
-  const setLoading = useAuthStore((s) => s.setLoading);
-
   useEffect(() => {
-    let cancelled = false;
-
-    const init = async () => {
-      const stored = loadSession();
-      if (!stored?.refreshToken) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setRefreshToken(stored.refreshToken);
-        const data = await refreshUserToken(stored.refreshToken);
-        if (cancelled) return;
-        setAccessToken(data.accessToken);
-        setRefreshToken(data.refreshToken);
-        useAuthStore.getState().restoreSession(
-          {
-            ...stored.user,
-            token: data.accessToken,
-            refreshToken: data.refreshToken,
-          },
-          stored.rememberMe,
-        );
-      } catch {
-        clearSession();
-        if (!cancelled) useAuthStore.getState().logout();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    init();
-    return () => {
-      cancelled = true;
-    };
-  }, [setLoading]);
+    void refreshPersistedSession();
+  }, []);
 
   return null;
 }

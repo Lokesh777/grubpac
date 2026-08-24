@@ -31,25 +31,32 @@ export function saveSession(user: User, refreshToken: string, rememberMe: boolea
     savedAt: Date.now(),
   };
   const json = JSON.stringify(payload);
+  localStorage.setItem(SESSION_KEY, json);
   if (rememberMe) {
-    localStorage.setItem(SESSION_KEY, json);
     sessionStorage.removeItem(SESSION_KEY);
-  } else {
-    sessionStorage.setItem(SESSION_KEY, json);
-    localStorage.removeItem(SESSION_KEY);
   }
 }
 
 export function loadSession(): PersistedSession | null {
-  const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+  const raw =
+    sessionStorage.getItem(SESSION_KEY) ||
+    localStorage.getItem(SESSION_KEY) ||
+    localStorage.getItem(LEGACY_KEY);
   if (!raw) return null;
   try {
-    const session = JSON.parse(raw) as PersistedSession;
-    if (session.rememberMe && Date.now() - session.savedAt > THIRTY_DAYS_MS) {
+    const parsed = JSON.parse(raw) as PersistedSession & { user?: PersistedSession['user'] & { refreshToken?: string } };
+    const refreshToken = parsed.refreshToken || parsed.user?.refreshToken;
+    if (!refreshToken) {
       clearSession();
       return null;
     }
-    if (!session.refreshToken) {
+    const session: PersistedSession = {
+      user: parsed.user,
+      refreshToken,
+      rememberMe: parsed.rememberMe ?? true,
+      savedAt: parsed.savedAt || Date.now(),
+    };
+    if (session.rememberMe && Date.now() - session.savedAt > THIRTY_DAYS_MS) {
       clearSession();
       return null;
     }

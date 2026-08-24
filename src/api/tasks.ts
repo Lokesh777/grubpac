@@ -96,7 +96,6 @@ function transformTask(raw: MockTask): Task {
 }
 
 export async function fetchTasks(): Promise<Task[]> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
   return rawTasks.slice(0, 30).map(transformTask);
 }
 
