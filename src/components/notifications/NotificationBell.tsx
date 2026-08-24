@@ -4,13 +4,20 @@ import { pollNotifications } from '@/api/notifications';
 import { useToast } from '@/hooks/useToast';
 import { getRelativeTime } from '@/utils/date';
 
+const PAGE_SIZE = 10;
+
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const { notifications, unreadCount, markAsRead, markAllAsRead, addNotification } = useNotificationStore();
   const toast = useToast();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const lastSeenIds = useRef<Set<number>>(new Set());
+
+  const totalPages = Math.max(1, Math.ceil(notifications.length / PAGE_SIZE));
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleNotifications = notifications.slice(startIndex, startIndex + PAGE_SIZE);
 
   const doPoll = useCallback(async () => {
     try {
@@ -68,6 +75,10 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [notifications.length]);
+
   return (
     <div className="relative" ref={panelRef}>
       <button
@@ -80,7 +91,7 @@ export function NotificationBell() {
         </svg>
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
@@ -104,7 +115,7 @@ export function NotificationBell() {
                 No notifications yet
               </p>
             ) : (
-              notifications.map((n) => (
+              visibleNotifications.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => markAsRead(n.id)}
@@ -126,6 +137,27 @@ export function NotificationBell() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-2 dark:border-gray-700">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-800"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

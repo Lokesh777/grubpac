@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -13,6 +13,7 @@ import { Column } from './Column';
 import { TaskDrawer } from './TaskDrawer';
 import { AddTaskModal } from './AddTaskModal';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { useBoardStore } from '@/stores/boardStore';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -25,15 +26,39 @@ const COLUMNS: { id: ColumnId; title: string }[] = [
   { id: 'done', title: 'Done' },
 ];
 
+const priorityFilterOptions = [
+  { value: 'all', label: 'All Priorities' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
 export function Board() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+
   const board = useBoardStore((s) => s.board);
   const moveTask = useBoardStore((s) => s.moveTask);
   const reorderTask = useBoardStore((s) => s.reorderTask);
+  const saveSnapshot = useBoardStore((s) => s.saveSnapshot);
+  const undoLastAction = useBoardStore((s) => s.undoLastAction);
+  const canUndo = useBoardStore((s) => s.canUndo);
 
   const { isLoading } = useTasksQuery();
+
+  const allTasks = useMemo(() => Object.values(board.tasks), [board.tasks]);
+
+  const assigneeFilterOptions = useMemo(() => {
+    const names = [...new Set(allTasks.map((t) => t.assignee))].sort();
+    return [
+      { value: 'all', label: 'All Assignees' },
+      ...names.map((name) => ({ value: name, label: name })),
+    ];
+  }, [allTasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -52,13 +77,43 @@ export function Board() {
     [board]
   );
 
+  const filterTasks = useCallback(
+    (tasks: Task[]): Task[] => {
+      return tasks.filter((task) => {
+        if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+        if (assigneeFilter !== 'all' && task.assignee !== assigneeFilter) return false;
+        return true;
+      });
+    },
+    [priorityFilter, assigneeFilter]
+  );
+
+  const columnTasks = useMemo(() => {
+    const result: Record<ColumnId, Task[]> = {
+      'backlog': [],
+      'in-progress': [],
+      'review': [],
+      'done': [],
+    };
+
+    for (const col of COLUMNS) {
+      const rawTasks = board.columns[col.id].taskIds
+        .map((id) => board.tasks[id])
+        .filter(Boolean);
+      result[col.id] = filterTasks(rawTasks);
+    }
+
+    return result;
+  }, [board, filterTasks]);
+
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const { active } = event;
+      saveSnapshot();
       const task = board.tasks[active.id as number];
       if (task) setSelectedTask(task);
     },
-    [board]
+    [board, saveSnapshot]
   );
 
   const handleDragOver = useCallback(
@@ -121,6 +176,10 @@ export function Board() {
     setDrawerOpen(true);
   }, []);
 
+  const handleUndo = useCallback(() => {
+    undoLastAction();
+  }, [undoLastAction]);
+
   if (isLoading) {
     return (
       <div className="flex h-full flex-col">
@@ -142,9 +201,32 @@ export function Board() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sprint Board</h2>
-        <Button onClick={() => setAddModalOpen(true)}>+ New Task</Button>
+        <div className="flex items-center gap-2">
+          {canUndo() && (
+            <Button variant="ghost" onClick={handleUndo}>
+              Undo
+            </Button>
+          )}
+          <Button onClick={() => setAddModalOpen(true)}>+ New Task</Button>
+        </div>
+      </div>
+
+      <div className="mb-4 flex w-fit flex-col gap-2 sm:flex-row sm:items-center">
+        <Select
+          options={priorityFilterOptions}
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="w-40"
+        />
+
+        <Select
+          options={assigneeFilterOptions}
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          className="w-48"
+        />
       </div>
 
       <DndContext
@@ -160,9 +242,7 @@ export function Board() {
               key={col.id}
               id={col.id}
               title={col.title}
-              tasks={board.columns[col.id].taskIds
-                .map((id) => board.tasks[id])
-                .filter(Boolean)}
+              tasks={columnTasks[col.id]}
               onTaskClick={handleTaskClick}
             />
           ))}

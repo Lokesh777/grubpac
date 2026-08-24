@@ -24,7 +24,7 @@ export const useNotificationStore = create<NotificationState>()(
       addNotification: (notification) => {
         const existing = get().notifications;
         if (existing.find((n) => n.id === notification.id)) return;
-        const updated = [notification, ...existing].slice(0, 20);
+        const updated = [notification, ...existing].slice(0, 50);
         const unreadCount = updated.filter((n) => !n.read).length;
         set({ notifications: updated, unreadCount });
       },
@@ -51,7 +51,7 @@ export const useNotificationStore = create<NotificationState>()(
             createdAt: new Date().toISOString(),
           }));
         if (newNotifications.length > 0) {
-          const updated = [...newNotifications, ...existing].slice(0, 20);
+          const updated = [...newNotifications, ...existing].slice(0, 50);
           const unreadCount = updated.filter((n) => !n.read).length;
           set({ notifications: updated, unreadCount });
         }

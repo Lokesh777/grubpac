@@ -4,6 +4,7 @@ import type { Task, ColumnId, Board } from '@/types';
 
 interface BoardState {
   board: Board;
+  previousBoard: Board | null;
   initialized: boolean;
   initBoard: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
@@ -13,6 +14,9 @@ interface BoardState {
   reorderTask: (columnId: ColumnId, oldIndex: number, newIndex: number) => void;
   addComment: (taskId: number, comment: Task['comments'][0]) => void;
   getTasksByColumn: (columnId: ColumnId) => Task[];
+  saveSnapshot: () => void;
+  undoLastAction: () => void;
+  canUndo: () => boolean;
 }
 
 const createEmptyBoard = (): Board => ({
@@ -25,11 +29,25 @@ const createEmptyBoard = (): Board => ({
   tasks: {},
 });
 
+function cloneBoard(board: Board): Board {
+  return {
+    columns: {
+      'backlog': { ...board.columns['backlog'], taskIds: [...board.columns['backlog'].taskIds] },
+      'in-progress': { ...board.columns['in-progress'], taskIds: [...board.columns['in-progress'].taskIds] },
+      'review': { ...board.columns['review'], taskIds: [...board.columns['review'].taskIds] },
+      'done': { ...board.columns['done'], taskIds: [...board.columns['done'].taskIds] },
+    },
+    tasks: { ...board.tasks },
+  };
+}
+
 export const useBoardStore = create<BoardState>()(
   persist(
     (set, get) => ({
       board: createEmptyBoard(),
+      previousBoard: null,
       initialized: false,
+
       initBoard: (tasks) => {
         const board = createEmptyBoard();
         const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
@@ -41,6 +59,21 @@ export const useBoardStore = create<BoardState>()(
         });
         set({ board, initialized: true });
       },
+
+      saveSnapshot: () => {
+        const { board } = get();
+        set({ previousBoard: cloneBoard(board) });
+      },
+
+      undoLastAction: () => {
+        const { previousBoard } = get();
+        if (previousBoard) {
+          set({ board: previousBoard, previousBoard: null });
+        }
+      },
+
+      canUndo: () => get().previousBoard !== null,
+
       addTask: (task) => {
         const board = get().board;
         const column = board.columns[task.columnId];
@@ -57,6 +90,7 @@ export const useBoardStore = create<BoardState>()(
         };
         set({ board: newBoard });
       },
+
       updateTask: (taskId, updates) => {
         const board = get().board;
         const existingTask = board.tasks[taskId];
@@ -69,6 +103,7 @@ export const useBoardStore = create<BoardState>()(
           },
         });
       },
+
       deleteTask: (taskId) => {
         const board = get().board;
         const task = board.tasks[taskId];
@@ -85,6 +120,7 @@ export const useBoardStore = create<BoardState>()(
         delete newTasks[taskId];
         set({ board: { columns: newColumns, tasks: newTasks } });
       },
+
       moveTask: (taskId, fromColumn, toColumn, newIndex) => {
         const board = get().board;
         const fromCol = board.columns[fromColumn];
@@ -108,6 +144,7 @@ export const useBoardStore = create<BoardState>()(
           });
         }
       },
+
       reorderTask: (columnId, oldIndex, newIndex) => {
         const board = get().board;
         const column = board.columns[columnId];
@@ -124,6 +161,7 @@ export const useBoardStore = create<BoardState>()(
           },
         });
       },
+
       addComment: (taskId, comment) => {
         const board = get().board;
         const task = board.tasks[taskId];
@@ -133,6 +171,7 @@ export const useBoardStore = create<BoardState>()(
           board: { ...board, tasks: { ...board.tasks, [taskId]: updatedTask } },
         });
       },
+
       getTasksByColumn: (columnId) => {
         const board = get().board;
         const column = board.columns[columnId];
